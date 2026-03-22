@@ -1,3 +1,0 @@
-[console_scripts]
-MIPTD = miptd.cli:main
-MIPTD-validate = miptd.validate:main
