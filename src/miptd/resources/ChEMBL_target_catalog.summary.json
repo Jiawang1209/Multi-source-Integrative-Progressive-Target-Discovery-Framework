@@ -1,0 +1,16 @@
+{
+  "file": "src/miptd/resources/ChEMBL_target_catalog.csv",
+  "n_rows": 8886,
+  "organism": "Homo sapiens",
+  "fields": [
+    "ChEMBL ID",
+    "Name",
+    "Accessions",
+    "Type",
+    "Organism",
+    "Compounds",
+    "Activities",
+    "Tax ID",
+    "Species Group Flag"
+  ]
+}

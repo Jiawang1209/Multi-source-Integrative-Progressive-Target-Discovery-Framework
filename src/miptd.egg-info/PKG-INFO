@@ -1,3 +1,14 @@
+Metadata-Version: 2.4
+Name: miptd
+Version: 0.1.0
+Summary: MIPTD: Multi-source Integrative Progressive Target Discovery framework.
+Author: OpenAI Codex
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: requests>=2.31.0
+Requires-Dist: beautifulsoup4>=4.12.0
+Requires-Dist: playwright>=1.53.0
+
 # MIPTD
 
 `MIPTD` stands for `Multi-source Integrative Progressive Target Discovery`.
@@ -8,8 +19,6 @@ The package starts from one real `CAS` number, resolves compound identity online
 ## Project Title
 
 **MIPTD: Multi-source Integrative Progressive Target Discovery**
-
-License: `MIT`
 
 ## Project Overview
 
@@ -103,60 +112,13 @@ Resource generation scripts are also preserved in [`scripts`](/Users/liuyue/Desk
 
 Recommended environment setup:
 
-### Recommended Install Script
-
-Use the bundled installer script. It creates a minimal environment first, then installs `mamba` inside that environment, then installs the remaining dependencies in the correct order.
-
 ```bash
-bash scripts/install_miptd.sh
-```
-
-Custom environment name:
-
-```bash
-bash scripts/install_miptd.sh my_miptd_env
-```
-
-### Manual Install
-
-Use this if you want to run each step yourself.
-
-1. Create the isolated conda environment.
-2. Install `mamba` inside that environment.
-3. Install the conda dependencies with `mamba`.
-4. Install the missing R package `legendry`.
-5. Install the package in editable mode.
-
-```bash
-conda create -n miptd -y python=3.11 pip
-conda install -n miptd -y -c conda-forge mamba
-conda run -n miptd conda install -y -c pytorch -c bioconda -c conda-forge \
-  nodejs pytorch rdkit r-base r-tidyverse r-readxl r-writexl r-ggvenn \
-  r-jsonlite bioconductor-clusterprofiler bioconductor-org.hs.eg.db \
-  r-ggnewscale r-circlize bioconductor-complexheatmap
-conda run -n miptd Rscript -e "install.packages('legendry', repos='https://cloud.r-project.org')"
-conda run -n miptd pip install -e . chemprop==2.2.2
-```
-
-If browser automation is needed for `SwissTargetPrediction`, make sure the local browser dependency is available.
-
-`legendry` is installed as an additional R package after environment creation because it is not bundled in the conda environment definition.
-This two-stage install is preferred over `conda env create -f environment.yml` because it ensures the heavy dependency installation happens after `mamba` is available inside the target environment.
-
-### Fully Locked Install
-
-Use this when you want the exact verified package versions from the validated `miptd` environment.
-
-```bash
-conda env create -f environment.lock.yml
+conda env create -f environment.yml
 conda activate miptd
-Rscript -e "install.packages('legendry', repos='https://cloud.r-project.org')"
 pip install -e .
 ```
 
-Locked environment file:
-
-- [`environment.lock.yml`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/environment.lock.yml)
+If browser automation is needed for `SwissTargetPrediction`, make sure the local browser dependency is available.
 
 ## Usage
 
@@ -182,28 +144,6 @@ Main arguments:
   optional repository root
 - `--dry-run`
   print the planned workflow without executing
-
-### Keyword-Based Filtering
-
-The filtering used in `Step C` and `Step D` is driven by the keywords passed through:
-
-```bash
---disease-keywords "NAFLD,liver,hepatic"
-```
-
-The package first runs full GO/KEGG enrichment on the union target set, then converts the comma-separated keywords into a regex-style matching rule, and finally applies that rule to the enrichment `Description` field.
-
-The actual logic is:
-
-1. run full GO/KEGG enrichment on the union target set
-2. build a keyword-matching rule from `--disease-keywords`
-3. match that rule against GO/KEGG `Description`
-4. preferentially keep the matched rows for panel `c`
-5. derive panel `d` genes from the selected KEGG rows
-
-Fallback rule:
-
-- if none of the descriptions match the user-provided keywords, the workflow falls back to top-ranked rows by significance and count so `c` and `d` are still produced
 
 ### Validate a Case Directory
 
@@ -261,8 +201,6 @@ Detailed documentation is available in [`doc`](/Users/liuyue/Desktop/workspace/C
 - [`doc/包功能与使用说明.md`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/doc/包功能与使用说明.md)
 - [`doc/单CAS_Figure1分析流程说明.md`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/doc/单CAS_Figure1分析流程说明.md)
 - [`doc/Single_CAS_Figure1_Pipeline.md`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/doc/Single_CAS_Figure1_Pipeline.md)
-- [`TROUBLESHOOTING.md`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/TROUBLESHOOTING.md)
-- [`TROUBLESHOOTING_CN.md`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/TROUBLESHOOTING_CN.md)
 
 ## Current Status
 

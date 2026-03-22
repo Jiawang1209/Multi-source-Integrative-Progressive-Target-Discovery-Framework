@@ -1,0 +1,28 @@
+name: miptd
+channels:
+  - pytorch
+  - bioconda
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - mamba
+  - nodejs
+  - pytorch
+  - rdkit
+  - r-base
+  - r-tidyverse
+  - r-readxl
+  - r-writexl
+  - r-ggvenn
+  - r-jsonlite
+  - bioconductor-clusterprofiler
+  - bioconductor-org.hs.eg.db
+  - r-ggnewscale
+  - r-circlize
+  - bioconductor-complexheatmap
+  - pip:
+      - chemprop==2.2.2
+      - requests>=2.31.0
+      - beautifulsoup4>=4.12.0
+      - playwright>=1.53.0

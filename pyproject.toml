@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "miptd"
+version = "0.1.0"
+description = "MIPTD: Multi-source Integrative Progressive Target Discovery framework."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+  { name = "OpenAI Codex" }
+]
+dependencies = [
+  "requests>=2.31.0",
+  "beautifulsoup4>=4.12.0",
+  "playwright>=1.53.0",
+]
+keywords = ["cas", "target-discovery", "chemprop", "bioinformatics", "drug-discovery"]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+
+[project.scripts]
+MIPTD = "miptd.cli:main"
+MIPTD-validate = "miptd.validate:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+miptd = ["resources/*.tsv", "resources/*.csv", "resources/*.json"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
