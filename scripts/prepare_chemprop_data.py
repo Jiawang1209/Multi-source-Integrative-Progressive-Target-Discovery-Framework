@@ -10,9 +10,58 @@ import urllib.request
 from collections import defaultdict
 from pathlib import Path
 
+from rdkit import Chem, RDLogger
+from rdkit.Chem.Scaffolds import MurckoScaffold
+
 
 ACTIVITY_TYPES = ("IC50", "Ki", "Kd", "EC50")
 USER_AGENT = "ChempropDataPrep/1.0"
+
+# Silence RDKit's stderr spam during the sanitize_smiles_rows pass — we deliberately
+# probe each SMILES and want to count failures, not log them one by one.
+RDLogger.DisableLog("rdApp.*")
+
+
+def smiles_passes_scaffold_check(smiles: str) -> bool:
+    """Whether a SMILES survives the same RDKit / MurckoScaffold path that
+    chemprop's astartes splitter exercises during training.
+
+    Recent RDKit versions (>=2024.03) raise hard `Pre-condition Violation:
+    bad bond stereo` errors on malformed double-bond stereo annotations that
+    older versions silently corrected. Such rows must be dropped before they
+    reach `chemprop train`, otherwise the entire training run aborts.
+    """
+    if not smiles:
+        return False
+    try:
+        mol = Chem.MolFromSmiles(smiles)
+        if mol is None:
+            return False
+        MurckoScaffold.MurckoScaffoldSmiles(mol=mol, includeChirality=False)
+    except Exception:
+        return False
+    return True
+
+
+def sanitize_smiles_rows(rows: list[dict]) -> tuple[list[dict], int]:
+    """Drop rows whose `canonical_smiles` would crash RDKit downstream.
+
+    Returns the kept rows and the number of dropped rows. SMILES strings are
+    cached so that the same molecule is only validated once across many target
+    rows, which keeps the cost negligible relative to the ChEMBL API fetches.
+    """
+    cache: dict[str, bool] = {}
+    kept: list[dict] = []
+    dropped = 0
+    for row in rows:
+        smiles = row.get("canonical_smiles") or ""
+        if smiles not in cache:
+            cache[smiles] = smiles_passes_scaffold_check(smiles)
+        if cache[smiles]:
+            kept.append(row)
+        else:
+            dropped += 1
+    return kept, dropped
 
 
 def parse_args():
@@ -373,6 +422,14 @@ def main():
         row["n_measurements"] = max(row["n_measurements"], len(values))
         deduped_long_rows.append(row)
 
+    # Drop rows whose SMILES would crash RDKit / astartes / chemprop downstream.
+    n_before_sanitize = len(deduped_long_rows)
+    deduped_long_rows, n_smiles_dropped = sanitize_smiles_rows(deduped_long_rows)
+    log(
+        f"[smiles-sanitize] dropped {n_smiles_dropped}/{n_before_sanitize} rows "
+        "with malformed SMILES (failed RDKit MurckoScaffold check)"
+    )
+
     task_summary = build_task_summary(key_targets, gene_to_target_ids, deduped_long_rows)
     eligible_genes = [
         row["target"]
@@ -450,6 +507,7 @@ def main():
         "eligible_targets": eligible_genes,
         "n_long_rows": len(deduped_long_rows),
         "n_wide_rows": len(chemprop_wide),
+        "n_smiles_dropped": n_smiles_dropped,
         "min_task_samples": args.min_task_samples,
     }
     output_dir.mkdir(parents=True, exist_ok=True)
