@@ -47,6 +47,8 @@
 - `beautifulsoup4`
 - `playwright`
 - `chemprop`
+- `matplotlib`（在 `environment.yml` 中以 `matplotlib-base` 形式声明，被 `scripts/plot_figure1e.py` 使用）
+- `pillow`（被 `scripts/build_figure1.py` 用于图像合成）
 - Python 标准库中的 API、HTML 解析和流程编排模块
 
 ### R
@@ -61,6 +63,7 @@
 - `ggnewscale`
 - `circlize`
 - `ComplexHeatmap`
+- `legendry`（由 `scripts/install_miptd.sh` 从 CRAN 安装，目前 conda-forge / bioconda 上还没有）
 
 ### 外部在线来源
 
@@ -131,7 +134,8 @@ conda install -n miptd -y -c conda-forge mamba
 conda run -n miptd conda install -y -c pytorch -c bioconda -c conda-forge \
   nodejs pytorch rdkit r-base r-tidyverse r-readxl r-writexl r-ggvenn \
   r-jsonlite bioconductor-clusterprofiler bioconductor-org.hs.eg.db \
-  r-ggnewscale r-circlize bioconductor-complexheatmap
+  r-ggnewscale r-circlize bioconductor-complexheatmap \
+  matplotlib-base pillow
 conda run -n miptd Rscript -e "install.packages('legendry', repos='https://cloud.r-project.org')"
 conda run -n miptd pip install -e . chemprop==2.2.2
 ```

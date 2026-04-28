@@ -49,6 +49,8 @@ The project uses a mixed Python + R stack.
 - `beautifulsoup4`
 - `playwright`
 - `chemprop`
+- `matplotlib` (declared in `environment.yml` as `matplotlib-base`, used by `scripts/plot_figure1e.py`)
+- `pillow` (used by `scripts/build_figure1.py` for image composition)
 - standard library modules for API access, HTML parsing, and pipeline orchestration
 
 ### R
@@ -63,6 +65,7 @@ The project uses a mixed Python + R stack.
 - `ggnewscale`
 - `circlize`
 - `ComplexHeatmap`
+- `legendry` (installed from CRAN by `scripts/install_miptd.sh`; not on conda-forge / bioconda)
 
 ### External Online Sources
 
@@ -133,7 +136,8 @@ conda install -n miptd -y -c conda-forge mamba
 conda run -n miptd conda install -y -c pytorch -c bioconda -c conda-forge \
   nodejs pytorch rdkit r-base r-tidyverse r-readxl r-writexl r-ggvenn \
   r-jsonlite bioconductor-clusterprofiler bioconductor-org.hs.eg.db \
-  r-ggnewscale r-circlize bioconductor-complexheatmap
+  r-ggnewscale r-circlize bioconductor-complexheatmap \
+  matplotlib-base pillow
 conda run -n miptd Rscript -e "install.packages('legendry', repos='https://cloud.r-project.org')"
 conda run -n miptd pip install -e . chemprop==2.2.2
 ```
