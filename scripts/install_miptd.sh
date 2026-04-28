@@ -31,7 +31,9 @@ conda run -n "${ENV_NAME}" conda install -y -c pytorch -c bioconda -c conda-forg
   bioconductor-org.hs.eg.db \
   r-ggnewscale \
   r-circlize \
-  bioconductor-complexheatmap
+  bioconductor-complexheatmap \
+  matplotlib-base \
+  pillow
 
 echo "[MIPTD install] Step 4: install R package legendry"
 conda run -n "${ENV_NAME}" Rscript -e "install.packages('legendry', repos='https://cloud.r-project.org')"

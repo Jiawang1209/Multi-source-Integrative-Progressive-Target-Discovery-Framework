@@ -21,6 +21,11 @@ dependencies:
   - r-ggnewscale
   - r-circlize
   - bioconductor-complexheatmap
+  - matplotlib-base
+  - pillow
+  # NOTE: the R package `legendry` is not on conda-forge/bioconda yet.
+  # It is installed from CRAN by `scripts/install_miptd.sh` (Step 4):
+  #   Rscript -e "install.packages('legendry', repos='https://cloud.r-project.org')"
   - pip:
       - chemprop==2.2.2
       - requests>=2.31.0

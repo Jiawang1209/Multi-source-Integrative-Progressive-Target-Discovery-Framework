@@ -2,11 +2,22 @@
 
 import argparse
 import csv
+import sys
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-from matplotlib import gridspec
-from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
+try:
+    import matplotlib.pyplot as plt
+    from matplotlib import gridspec
+    from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
+except ModuleNotFoundError as exc:  # pragma: no cover - environment guard
+    sys.stderr.write(
+        f"[plot_figure1e] Missing required dependency: {exc.name}.\n"
+        "Install it into the active MIPTD conda environment with:\n"
+        "    conda install -c conda-forge matplotlib-base\n"
+        "or, if conda is unavailable, fall back to:\n"
+        "    pip install matplotlib\n"
+    )
+    sys.exit(2)
 
 
 def parse_args():
