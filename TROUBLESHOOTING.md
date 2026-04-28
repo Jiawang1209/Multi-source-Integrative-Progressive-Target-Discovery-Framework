@@ -100,8 +100,8 @@ Check:
 
 The package expects these formal resources inside:
 
-- [`src/miptd/resources/idmapping.tsv`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/src/miptd/resources/idmapping.tsv)
-- [`src/miptd/resources/ChEMBL_target_catalog.csv`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/src/miptd/resources/ChEMBL_target_catalog.csv)
+- [`src/miptd/resources/idmapping.tsv`](src/miptd/resources/idmapping.tsv)
+- [`src/miptd/resources/ChEMBL_target_catalog.csv`](src/miptd/resources/ChEMBL_target_catalog.csv)
 
 If they are missing, rebuild them with:
 

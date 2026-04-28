@@ -156,7 +156,7 @@ class PipelineRunner:
                 "--smiles",
                 self.compound.canonical_smiles,
                 "--result-timeout-seconds",
-                "300",
+                "900",
                 "--output-dir",
                 str(swiss_fetch_dir),
             ),

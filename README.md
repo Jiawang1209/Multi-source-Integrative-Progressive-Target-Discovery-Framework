@@ -77,38 +77,47 @@ The project uses a mixed Python + R stack.
 
 ## Repository Structure
 
-- [`src/miptd`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/src/miptd)
+- [`src/miptd`](src/miptd)
   Python package source code
-- [`scripts`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/scripts)
+- [`scripts`](scripts)
   analysis, crawling, and resource-generation scripts
-- [`src/miptd/resources`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/src/miptd/resources)
+- [`src/miptd/resources`](src/miptd/resources)
   bundled formal runtime resource files
-- [`doc`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/doc)
+- [`doc`](doc)
   workflow and package documentation
 
 ## Bundled Resources
 
 The package currently includes two formal resource files:
 
-- [`src/miptd/resources/idmapping.tsv`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/src/miptd/resources/idmapping.tsv)
+- [`src/miptd/resources/idmapping.tsv`](src/miptd/resources/idmapping.tsv)
   `UNIPROT -> SYMBOL` mapping for human genes
-- [`src/miptd/resources/ChEMBL_target_catalog.csv`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/src/miptd/resources/ChEMBL_target_catalog.csv)
+- [`src/miptd/resources/ChEMBL_target_catalog.csv`](src/miptd/resources/ChEMBL_target_catalog.csv)
   human `ChEMBL target` catalog used for target normalization and Chemprop task preparation
 
 These files are part of the package runtime requirements and must be shipped together with the code.
 
-Resource generation scripts are also preserved in [`scripts`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/scripts):
+Resource generation scripts are also preserved in [`scripts`](scripts):
 
-- [`scripts/build_idmapping_tsv.R`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/scripts/build_idmapping_tsv.R)
-- [`scripts/build_chembl_target_catalog.py`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/scripts/build_chembl_target_catalog.py)
+- [`scripts/build_idmapping_tsv.R`](scripts/build_idmapping_tsv.R)
+- [`scripts/build_chembl_target_catalog.py`](scripts/build_chembl_target_catalog.py)
 
 ## Installation
 
-Recommended environment setup:
+### Step 1: Clone the repository
 
-### Recommended Install Script
+```bash
+mkdir -p ~/Github_repos
+cd ~/Github_repos
+git clone https://github.com/Jiawang1209/Multi-source-Integrative-Progressive-Target-Discovery-Framework.git
+cd Multi-source-Integrative-Progressive-Target-Discovery-Framework
+```
 
-Use the bundled installer script. It creates a minimal environment first, then installs `mamba` inside that environment, then installs the remaining dependencies in the correct order.
+### Step 2: Set up the conda environment (pick one of A / B / C)
+
+All three options must be run from inside the clone (i.e., the directory you just `cd` into).
+
+#### Option A — Bundled installer script (recommended)
 
 ```bash
 bash scripts/install_miptd.sh
@@ -120,15 +129,7 @@ Custom environment name:
 bash scripts/install_miptd.sh my_miptd_env
 ```
 
-### Manual Install
-
-Use this if you want to run each step yourself.
-
-1. Create the isolated conda environment.
-2. Install `mamba` inside that environment.
-3. Install the conda dependencies with `mamba`.
-4. Install the missing R package `legendry`.
-5. Install the package in editable mode.
+#### Option B — Manual install
 
 ```bash
 conda create -n miptd -y python=3.11 pip
@@ -142,14 +143,9 @@ conda run -n miptd Rscript -e "install.packages('legendry', repos='https://cloud
 conda run -n miptd pip install -e . chemprop==2.2.2
 ```
 
-If browser automation is needed for `SwissTargetPrediction`, make sure the local browser dependency is available.
+If browser automation is needed for `SwissTargetPrediction`, ensure that a local browser dependency is available — the fetch script uses Playwright + Google Chrome.
 
-`legendry` is installed as an additional R package after environment creation because it is not bundled in the conda environment definition.
-This two-stage install is preferred over `conda env create -f environment.yml` because it ensures the heavy dependency installation happens after `mamba` is available inside the target environment.
-
-### Fully Locked Install
-
-Use this when you want the exact verified package versions from the validated `miptd` environment.
+#### Option C — Fully locked install
 
 ```bash
 conda env create -f environment.lock.yml
@@ -158,11 +154,23 @@ Rscript -e "install.packages('legendry', repos='https://cloud.r-project.org')"
 pip install -e .
 ```
 
-Locked environment file:
-
-- [`environment.lock.yml`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/environment.lock.yml)
-
 ## Usage
+
+### Where to run MIPTD
+
+Run MIPTD from any working directory you choose for that analysis — typically a per-analysis folder somewhere outside the source clone. The pipeline writes a `CAS_<number>_<date>/` subdirectory under whichever directory `--output-root` points to (default: the current directory). The source clone you set up during installation is **not** the place to run analyses.
+
+Concrete pattern:
+
+```bash
+mkdir -p ~/Desktop/analyses/paclitaxel
+cd ~/Desktop/analyses/paclitaxel
+conda activate miptd
+MIPTD --cas 33069-62-4 --disease-keywords "cancer"
+# pipeline writes: ~/Desktop/analyses/paclitaxel/CAS_33069-62-4_<today>/
+```
+
+You can clean up `~/Desktop/analyses/paclitaxel/` whenever you are done; the MIPTD installation is unaffected because it lives in your `~/Github_repos/.../` clone.
 
 ### Run the Full Pipeline
 
@@ -259,14 +267,14 @@ The package uses an explicit degradation strategy for online source collection:
 
 ## Documentation
 
-Detailed documentation is available in [`doc`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/doc):
+Detailed documentation is available in [`doc`](doc):
 
-- [`doc/README.md`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/doc/README.md)
-- [`doc/包功能与使用说明.md`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/doc/包功能与使用说明.md)
-- [`doc/单CAS_Figure1分析流程说明.md`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/doc/单CAS_Figure1分析流程说明.md)
-- [`doc/Single_CAS_Figure1_Pipeline.md`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/doc/Single_CAS_Figure1_Pipeline.md)
-- [`TROUBLESHOOTING.md`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/TROUBLESHOOTING.md)
-- [`TROUBLESHOOTING_CN.md`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/TROUBLESHOOTING_CN.md)
+- [`doc/README.md`](doc/README.md)
+- [`doc/包功能与使用说明.md`](doc/包功能与使用说明.md)
+- [`doc/单CAS_Figure1分析流程说明.md`](doc/单CAS_Figure1分析流程说明.md)
+- [`doc/Single_CAS_Figure1_Pipeline.md`](doc/Single_CAS_Figure1_Pipeline.md)
+- [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)
+- [`TROUBLESHOOTING_CN.md`](TROUBLESHOOTING_CN.md)
 
 ## Current Status
 
@@ -289,4 +297,4 @@ Before packaging or publishing:
 - keep `src/miptd/resources/ChEMBL_target_catalog.csv`
 - verify `MIPTD --help`
 - verify `MIPTD-validate --help`
-- verify the environment can be created from [`environment.yml`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/environment.yml)
+- verify the environment can be created from [`environment.yml`](environment.yml)

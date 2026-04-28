@@ -75,38 +75,47 @@
 
 ## 仓库结构
 
-- [`src/miptd`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/src/miptd)
+- [`src/miptd`](src/miptd)
   Python 包源码
-- [`scripts`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/scripts)
+- [`scripts`](scripts)
   分析、抓取和资源生成脚本
-- [`src/miptd/resources`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/src/miptd/resources)
+- [`src/miptd/resources`](src/miptd/resources)
   正式静态运行资源文件
-- [`doc`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/doc)
+- [`doc`](doc)
   流程与包文档
 
 ## 内置资源
 
 当前包内置两份正式资源文件：
 
-- [`src/miptd/resources/idmapping.tsv`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/src/miptd/resources/idmapping.tsv)
+- [`src/miptd/resources/idmapping.tsv`](src/miptd/resources/idmapping.tsv)
   人类基因的 `UNIPROT -> SYMBOL` 映射表
-- [`src/miptd/resources/ChEMBL_target_catalog.csv`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/src/miptd/resources/ChEMBL_target_catalog.csv)
+- [`src/miptd/resources/ChEMBL_target_catalog.csv`](src/miptd/resources/ChEMBL_target_catalog.csv)
   人类 `ChEMBL target` 目录表，用于靶标标准化与 Chemprop 任务构建
 
 这两份文件属于运行时正式资源，发布和分发时必须和代码一起保留。
 
-对应的资源生成脚本也保存在 [`scripts`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/scripts) 下：
+对应的资源生成脚本也保存在 [`scripts`](scripts) 下：
 
-- [`scripts/build_idmapping_tsv.R`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/scripts/build_idmapping_tsv.R)
-- [`scripts/build_chembl_target_catalog.py`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/scripts/build_chembl_target_catalog.py)
+- [`scripts/build_idmapping_tsv.R`](scripts/build_idmapping_tsv.R)
+- [`scripts/build_chembl_target_catalog.py`](scripts/build_chembl_target_catalog.py)
 
 ## 安装方法
 
-推荐的环境安装方式：
+### Step 1：clone 仓库
 
-### 推荐安装脚本
+```bash
+mkdir -p ~/Github_repos
+cd ~/Github_repos
+git clone https://github.com/Jiawang1209/Multi-source-Integrative-Progressive-Target-Discovery-Framework.git
+cd Multi-source-Integrative-Progressive-Target-Discovery-Framework
+```
 
-优先使用仓库内置的安装脚本。它会先创建最小环境，再在目标环境内部安装 `mamba`，然后按正确顺序装剩余依赖。
+### Step 2：配置 conda 环境（A / B / C 三选一）
+
+下面三种方式都必须**在 clone 目录里**执行（也就是你刚 `cd` 进去的那个目录）。
+
+#### 方式 A — 推荐安装脚本
 
 ```bash
 bash scripts/install_miptd.sh
@@ -118,15 +127,7 @@ bash scripts/install_miptd.sh
 bash scripts/install_miptd.sh my_miptd_env
 ```
 
-### 手动安装
-
-适合希望逐步执行每条命令的场景。
-
-1. 创建独立 conda 环境。
-2. 在该环境内部安装 `mamba`。
-3. 使用 `mamba` 安装 conda 依赖。
-4. 补装缺失的 R 包 `legendry`。
-5. 以可编辑模式安装当前包。
+#### 方式 B — 手动安装
 
 ```bash
 conda create -n miptd -y python=3.11 pip
@@ -140,14 +141,9 @@ conda run -n miptd Rscript -e "install.packages('legendry', repos='https://cloud
 conda run -n miptd pip install -e . chemprop==2.2.2
 ```
 
-如果需要跑 `SwissTargetPrediction` 的浏览器自动化流程，需要确保本机浏览器依赖可用。
+如果需要跑 `SwissTargetPrediction` 的浏览器自动化流程，需要确保本机浏览器依赖可用——抓取脚本走的是 Playwright + Google Chrome。
 
-`legendry` 需要在环境创建后额外通过 `Rscript` 安装，因为它目前没有跟随 conda 环境定义一起下发。
-现在更推荐“两段式安装”，而不是直接执行 `conda env create -f environment.yml`，因为只有先把 `mamba` 装进目标环境，后续大依赖安装才能真正用上它。
-
-### 全锁定安装
-
-适合需要尽量复现当前已验证环境版本的场景。
+#### 方式 C — 全锁定安装
 
 ```bash
 conda env create -f environment.lock.yml
@@ -156,11 +152,23 @@ Rscript -e "install.packages('legendry', repos='https://cloud.r-project.org')"
 pip install -e .
 ```
 
-锁定环境文件：
-
-- [`environment.lock.yml`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/environment.lock.yml)
-
 ## 使用方法
+
+### 在哪里跑 MIPTD
+
+**MIPTD 不在源码 clone 目录里跑**。请在你为这次分析挑的任意工作目录里执行——通常是仓库之外某个"按项目/按 CAS 起名的工作目录"。pipeline 会在 `--output-root`（默认就是当前目录）下面建一个 `CAS_<编号>_<日期>/` 子目录写产物，clone 目录本身完全不参与产物写入。
+
+具体模式：
+
+```bash
+mkdir -p ~/Desktop/analyses/paclitaxel
+cd ~/Desktop/analyses/paclitaxel
+conda activate miptd
+MIPTD --cas 33069-62-4 --disease-keywords "cancer"
+# 产物会写到 ~/Desktop/analyses/paclitaxel/CAS_33069-62-4_<今日日期>/
+```
+
+`~/Desktop/analyses/paclitaxel/` 可以随时清理或归档，MIPTD 安装本身不受影响——它住在 `~/Github_repos/.../` 下的 clone 里。
 
 ### 运行完整流程
 
@@ -257,14 +265,14 @@ CAS_491-71-4_YYYY-MM-DD/
 
 ## 文档入口
 
-详细文档位于 [`doc`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/doc)：
+详细文档位于 [`doc`](doc)：
 
-- [`doc/README.md`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/doc/README.md)
-- [`doc/包功能与使用说明.md`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/doc/包功能与使用说明.md)
-- [`doc/单CAS_Figure1分析流程说明.md`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/doc/单CAS_Figure1分析流程说明.md)
-- [`doc/Single_CAS_Figure1_Pipeline.md`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/doc/Single_CAS_Figure1_Pipeline.md)
-- [`TROUBLESHOOTING.md`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/TROUBLESHOOTING.md)
-- [`TROUBLESHOOTING_CN.md`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/TROUBLESHOOTING_CN.md)
+- [`doc/README.md`](doc/README.md)
+- [`doc/包功能与使用说明.md`](doc/包功能与使用说明.md)
+- [`doc/单CAS_Figure1分析流程说明.md`](doc/单CAS_Figure1分析流程说明.md)
+- [`doc/Single_CAS_Figure1_Pipeline.md`](doc/Single_CAS_Figure1_Pipeline.md)
+- [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)
+- [`TROUBLESHOOTING_CN.md`](TROUBLESHOOTING_CN.md)
 
 ## 当前状态
 
@@ -287,7 +295,7 @@ CAS_491-71-4_YYYY-MM-DD/
 - 保留 `src/miptd/resources/ChEMBL_target_catalog.csv`
 - 确认 `MIPTD --help` 正常
 - 确认 `MIPTD-validate --help` 正常
-- 确认可以通过 [`environment.yml`](/Users/liuyue/Desktop/workspace/Cadisum_MM_Project/Nature_Communication_Figure1/environment.yml) 成功创建环境
+- 确认可以通过 [`environment.yml`](environment.yml) 成功创建环境
 
 
 
