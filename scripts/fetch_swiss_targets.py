@@ -21,8 +21,9 @@ except ImportError:  # pragma: no cover - handled at runtime
     sync_playwright = None
 
 
-SWISS_HOME_URL = "https://www.swisstargetprediction.ch/"
-RESULT_URL_RE = re.compile(r"https://www\.swisstargetprediction\.ch/result\.php\?job=\d+&organism=[A-Za-z_]+")
+SWISS_HOME_URL = "http://www.swisstargetprediction.ch/"
+SWISS_BASE_URL = "http://www.swisstargetprediction.ch/"
+RESULT_URL_RE = re.compile(r"https?://www\.swisstargetprediction\.ch/result\.php\?job=\d+&organism=[A-Za-z_]+")
 RESULT_PATH_RE = re.compile(r"result\.php\?job=\d+&organism=[A-Za-z_]+")
 CHROME_EXECUTABLE = Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
 
@@ -84,7 +85,7 @@ def extract_result_url_from_html(html_text: str) -> Optional[str]:
         return direct.group(0)
     path_match = RESULT_PATH_RE.search(html_text)
     if path_match:
-        return f"https://www.swisstargetprediction.ch/{path_match.group(0)}"
+        return f"{SWISS_BASE_URL}{path_match.group(0)}"
     return None
 
 
@@ -112,8 +113,12 @@ def submit_online(smiles: str, organism: str, timeout_seconds: int = 180, progre
             page.eval_on_selector(
                 "#smilesBox",
                 """element => {
+                    element.dispatchEvent(new Event('input', { bubbles: true }));
                     element.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
                     element.dispatchEvent(new Event('change', { bubbles: true }));
+                    if (typeof checkForm === 'function') {
+                        checkForm();
+                    }
                 }""",
             )
             if progress_path:
@@ -122,7 +127,8 @@ def submit_online(smiles: str, organism: str, timeout_seconds: int = 180, progre
             if progress_path:
                 write_progress(progress_path, {"stage": "submit"})
             log("[swiss] submit prediction")
-            page.locator("#submitButton").click(force=True)
+            page.wait_for_function("() => !document.getElementById('submitButton').disabled", timeout=30000)
+            page.locator("#submitButton").click()
             if progress_path:
                 write_progress(progress_path, {"stage": "wait_result_url"})
             log("[swiss] wait for result url")

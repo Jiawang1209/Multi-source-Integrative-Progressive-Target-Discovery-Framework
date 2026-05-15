@@ -26,6 +26,10 @@ BROWSER_HEADERS = {
 }
 
 
+SEA_SEARCH_URL = "https://sea.compbio.ucsf.edu/search"
+DEFAULT_FINGERPRINT_TYPE = "rdkit_ecfp"
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Resolve SEA results for a compound through online requests."
@@ -48,31 +52,38 @@ def write_progress(path: Path, payload: Dict) -> None:
         json.dump(payload, f, indent=2, ensure_ascii=False)
 
 
+def sea_safe_compound_id(compound_name: Optional[str]) -> str:
+    label = compound_name or "compound_1"
+    label = re.sub(r"[\s,\t]+", "_", label.strip())
+    label = re.sub(r"[^A-Za-z0-9_.:-]+", "_", label)
+    return label.strip("_") or "compound_1"
+
+
 def submit_online(smiles: str, compound_name: Optional[str]) -> Tuple[requests.Session, str]:
     session = requests.Session()
     session.headers.update(BROWSER_HEADERS)
-    log("[sea] open homepage")
-    home = session.get("https://sea.compbio.ucsf.edu/", timeout=120)
+    log("[sea] open search page")
+    home = session.get(SEA_SEARCH_URL, timeout=120)
     home.raise_for_status()
     match = re.search(r'name="csrf_token" type="hidden" value="([^"]+)"', home.text)
     if not match:
         raise RuntimeError("SEA csrf_token not found.")
-    label = compound_name or "compound_1"
+    label = sea_safe_compound_id(compound_name)
     payload = {
         "csrf_token": match.group(1),
+        "query_custom_fp_type": DEFAULT_FINGERPRINT_TYPE,
         "ref_type": "library",
-        "ref_library_id": "default",
         "query_type": "custom",
         "query_custom_targets_paste": f"{smiles} {label}",
     }
     log("[sea] submit query")
     result = session.post(
-        "https://sea.compbio.ucsf.edu/search",
+        SEA_SEARCH_URL,
         data=payload,
         headers={
             "Content-Type": "application/x-www-form-urlencoded",
             "Origin": "https://sea.compbio.ucsf.edu",
-            "Referer": "https://sea.compbio.ucsf.edu/",
+            "Referer": SEA_SEARCH_URL,
         },
         allow_redirects=True,
         timeout=300,

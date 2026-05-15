@@ -142,6 +142,7 @@ conda run -n miptd pip install -e . chemprop==2.2.2
 ```
 
 如果需要跑 `SwissTargetPrediction` 的浏览器自动化流程，需要确保本机浏览器依赖可用——抓取脚本走的是 Playwright + Google Chrome。
+当前脚本使用 `http://www.swisstargetprediction.ch/` 入口，并会显式触发页面的 SMILES 输入校验，以适配 SwissTargetPrediction 在 2026-05 前后的页面更新。
 
 #### 方式 C — 全锁定安装
 
@@ -215,6 +216,19 @@ MIPTD \
 
 - 如果用户提供的关键词一个都没有匹配到，程序不会直接输出空图，而是回退到按显著性和计数排序的 top 条目，以保证 `c` 和 `d` 仍然可以生成
 
+### 在线来源匹配规则
+
+Step A 会分别查询 `SwissTargetPrediction`、`SEA`、`ChEMBL` 和 `PPB2`。这四个在线来源的页面和 API 会变化，因此当前包对关键输入做了显式约束：
+
+- `SwissTargetPrediction`
+  使用 Playwright + Google Chrome 自动提交 SMILES；脚本走 HTTP 入口，并在提交前确认页面已允许预测。
+- `SEA`
+  使用 SEA 当前搜索页的 `rdkit_ecfp` 指纹类型提交自定义 query；化合物标签会自动转换为无空格 ID，避免 SEA 拒收含空格的 compound id。
+- `ChEMBL`
+  优先用 PubChem 解析出的 `InChIKey` 和 `SMILES` 做精确匹配。如果传入了这些精确标识但 ChEMBL 没有命中，脚本会把 ChEMBL 作为失败来源处理，而不会退回到名称搜索的第一条结果，避免把别的分子错当成当前 CAS。
+- `PPB2`
+  使用 SMILES 查询 PPB2，再把返回的 ChEMBL target 映射到人类 UniProt/gene symbol；无法映射到 gene symbol 的行不会贡献到后续 Venn 计数。
+
 ### 校验 case 目录
 
 ```bash
@@ -263,6 +277,8 @@ CAS_491-71-4_YYYY-MM-DD/
 - 只有在标准化后仍然至少有 `2` 个数据库提供非空人类靶标集合时，流程才会继续
 - 如果非空来源少于 `2` 个，流程会明确报错并停止
 
+如果某次运行已经失败，失败来源目录里可能已经写入空的占位文件。修复脚本后请换一个 `--run-date`，或者删除旧的 `CAS_<编号>_<日期>/` case 目录后再重新运行，避免复用旧占位文件。
+
 ## 文档入口
 
 详细文档位于 [`doc`](doc)：
@@ -296,6 +312,5 @@ CAS_491-71-4_YYYY-MM-DD/
 - 确认 `MIPTD --help` 正常
 - 确认 `MIPTD-validate --help` 正常
 - 确认可以通过 [`environment.yml`](environment.yml) 成功创建环境
-
 
 

@@ -144,6 +144,7 @@ conda run -n miptd pip install -e . chemprop==2.2.2
 ```
 
 If browser automation is needed for `SwissTargetPrediction`, ensure that a local browser dependency is available — the fetch script uses Playwright + Google Chrome.
+The current script uses the `http://www.swisstargetprediction.ch/` entry point and explicitly triggers the page-side SMILES validation logic to match SwissTargetPrediction page changes around 2026-05.
 
 #### Option C — Fully locked install
 
@@ -217,6 +218,19 @@ Fallback rule:
 
 - if none of the descriptions match the user-provided keywords, the workflow falls back to top-ranked rows by significance and count so `c` and `d` are still produced
 
+### Online Source Matching Rules
+
+Step A queries `SwissTargetPrediction`, `SEA`, `ChEMBL`, and `PPB2`. These online services can change their forms and APIs, so MIPTD now applies explicit source-specific rules:
+
+- `SwissTargetPrediction`
+  submits SMILES through Playwright + Google Chrome, uses the HTTP entry point, and waits until the page allows prediction before submitting.
+- `SEA`
+  submits custom queries with SEA's current `rdkit_ecfp` fingerprint field; compound labels are normalized to no-space IDs so SEA does not reject names such as `Timosaponin A1`.
+- `ChEMBL`
+  prioritizes exact matching against PubChem-derived `InChIKey` and `SMILES`. If exact identifiers are provided but no ChEMBL molecule matches them, ChEMBL is treated as a failed source instead of falling back to the first name-search hit. This avoids mixing targets from a different molecule into the current CAS case.
+- `PPB2`
+  queries PPB2 with SMILES and maps returned ChEMBL targets to human UniProt/gene symbols; rows that cannot be mapped to gene symbols do not contribute to downstream Venn counts.
+
 ### Validate a Case Directory
 
 ```bash
@@ -264,6 +278,8 @@ The package uses an explicit degradation strategy for online source collection:
 - a placeholder empty source file is written so the case remains structurally consistent
 - the pipeline continues only if at least 2 source databases produce non-empty human target sets after normalization
 - if fewer than 2 non-empty sources remain, the run stops with a clear error
+
+If a previous run already failed, its source folders may contain placeholder empty files. After updating fetch scripts, use a new `--run-date` or delete the old `CAS_<number>_<date>/` case directory before rerunning so stale placeholders are not reused.
 
 ## Documentation
 

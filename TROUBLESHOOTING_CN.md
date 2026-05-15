@@ -61,6 +61,8 @@ MIPTD-validate --help
 
 这是最常见的外部源故障之一。
 
+当前脚本使用 `http://www.swisstargetprediction.ch/` 入口。若日志停在打开首页附近，先检查本机网络、代理和 Chrome 是否可访问该 HTTP 页面；若日志停在提交之后，检查 `a_source_collection/swiss_fetch/progress.json` 里的阶段信息。
+
 当前包的处理方式是：
 
 - 在 `status.json` 里把 Swiss 标记为失败
@@ -72,6 +74,20 @@ MIPTD-validate --help
 - `run.log`
 - `status.json`
 - `a_source_collection/swiss_fetch/`
+
+### `SEA` 在浏览器有结果，但 MIPTD 没结果
+
+优先查看：
+
+- `run.log`
+- `a_source_collection/sea_fetch/progress.json`
+- `a_source_collection/sea_fetch/summary.json`
+
+当前脚本会提交 SEA 搜索页要求的 `rdkit_ecfp` 指纹字段，并把化合物名称转换为无空格标签。如果旧 case 目录中已经存在空的 `sea-results.xls`，请换一个 `--run-date` 或删除旧 case 后重跑。
+
+### `ChEMBL` 来源为空
+
+这不一定代表脚本错误。MIPTD 会用 PubChem 解析出的 `InChIKey` 和 `SMILES` 约束 ChEMBL 分子选择；如果 ChEMBL 名称搜索返回相似名字但精确结构不一致，脚本会拒绝这类结果，避免把错误分子的靶标混入当前 CAS。
 
 ### 某一个来源失败了，但流程还在继续
 
@@ -138,4 +154,3 @@ python3 scripts/build_chembl_target_catalog.py \
 - `status.json`
 - `case_manifest.json`
 - `a_source_collection/source_summary.json`
-

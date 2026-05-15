@@ -61,6 +61,8 @@ MIPTD-validate --help
 
 This is one of the most likely external failure points.
 
+The current script uses the `http://www.swisstargetprediction.ch/` entry point. If the log stops near homepage loading, first check local network, proxy, and Chrome access to that HTTP page. If it stops after submission, inspect the stage in `a_source_collection/swiss_fetch/progress.json`.
+
 Current package behavior:
 
 - the Swiss source is marked as failed in `status.json`
@@ -72,6 +74,20 @@ Check:
 - `run.log`
 - `status.json`
 - `a_source_collection/swiss_fetch/`
+
+### `SEA` has browser results but MIPTD returns none
+
+Inspect:
+
+- `run.log`
+- `a_source_collection/sea_fetch/progress.json`
+- `a_source_collection/sea_fetch/summary.json`
+
+The current script submits SEA's required `rdkit_ecfp` fingerprint field and normalizes compound labels to no-space IDs. If an old failed case already contains an empty `sea-results.xls`, rerun with a new `--run-date` or delete the old case directory first.
+
+### `ChEMBL` source is empty
+
+This is not always a script failure. MIPTD constrains ChEMBL molecule selection with PubChem-derived `InChIKey` and `SMILES`; if ChEMBL name search returns a similarly named molecule but the exact structure does not match, the script rejects it to avoid mixing targets from the wrong molecule into the current CAS case.
 
 ### One source fails but the run continues
 
@@ -138,4 +154,3 @@ For most failures, inspect these files first:
 - `status.json`
 - `case_manifest.json`
 - `a_source_collection/source_summary.json`
-

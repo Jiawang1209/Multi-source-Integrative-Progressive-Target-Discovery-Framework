@@ -63,6 +63,7 @@ def search_molecules(query, max_retries, request_timeout):
 
 
 def choose_molecule(molecules, match_inchikey=None, match_smiles=None):
+    exact_identifier_requested = bool(match_inchikey or match_smiles)
     if match_inchikey:
         for mol in molecules:
             key = ((mol.get("molecule_structures") or {}).get("standard_inchi_key") or "").upper()
@@ -75,6 +76,8 @@ def choose_molecule(molecules, match_inchikey=None, match_smiles=None):
                 return mol
     if not molecules:
         raise ValueError("No ChEMBL molecules matched the query.")
+    if exact_identifier_requested:
+        raise ValueError("No ChEMBL molecule matched the provided exact identifiers.")
     return molecules[0]
 
 
