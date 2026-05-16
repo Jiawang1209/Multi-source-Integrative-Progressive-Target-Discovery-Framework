@@ -43,6 +43,48 @@ class ChemblFetchTests(unittest.TestCase):
 
         self.assertEqual(chembl.choose_molecule(molecules)["molecule_chembl_id"], "CHEMBL1")
 
+    def test_select_molecule_uses_fallback_query_when_name_hit_mismatches_exact_identifier(self) -> None:
+        chembl = load_chembl_module()
+        seen_queries = []
+
+        def fake_search(query: str, max_retries: int, request_timeout: float):
+            seen_queries.append(query)
+            if query == "Timosaponin A1":
+                return [
+                    {
+                        "molecule_chembl_id": "CHEMBL_WRONG",
+                        "molecule_structures": {
+                            "standard_inchi_key": "WRONG-INCHIKEY",
+                            "canonical_smiles": "CCC",
+                        },
+                    }
+                ]
+            if query == "68422-00-4":
+                return [
+                    {
+                        "molecule_chembl_id": "CHEMBL_RIGHT",
+                        "molecule_structures": {
+                            "standard_inchi_key": "RIGHT-INCHIKEY",
+                            "canonical_smiles": "CCO",
+                        },
+                    }
+                ]
+            return []
+
+        chosen, searched = chembl.select_molecule_from_queries(
+            "Timosaponin A1",
+            fallback_queries=["68422-00-4"],
+            match_inchikey="RIGHT-INCHIKEY",
+            match_smiles="CCO",
+            max_retries=1,
+            request_timeout=1.0,
+            search_func=fake_search,
+        )
+
+        self.assertEqual(chosen["molecule_chembl_id"], "CHEMBL_RIGHT")
+        self.assertEqual(searched, ["Timosaponin A1", "68422-00-4"])
+        self.assertEqual(seen_queries, ["Timosaponin A1", "68422-00-4"])
+
 
 if __name__ == "__main__":
     unittest.main()

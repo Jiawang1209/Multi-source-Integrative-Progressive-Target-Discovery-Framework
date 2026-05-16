@@ -151,7 +151,9 @@ class CliAndPipelineTests(unittest.TestCase):
                 raise AssertionError(f"Unexpected command: {joined}")
 
             runner._run = fake_run  # type: ignore[method-assign]
-            runner._step_a_source_collection()
+            with patch("miptd.pipeline.SOURCE_FETCH_RETRY_DELAYS_SECONDS", (0, 0)):
+                with patch("miptd.pipeline.time.sleep"):
+                    runner._step_a_source_collection()
 
             swiss_placeholder = runner.case_paths.a_dir / "swiss_fetch" / "SwissTargetPrediction_491-71-4.csv"
             self.assertTrue(swiss_placeholder.exists())
@@ -161,6 +163,108 @@ class CliAndPipelineTests(unittest.TestCase):
             )
             self.assertEqual(runner.status["steps"]["step_a"]["status"], "degraded")
             self.assertEqual(runner.status["non_empty_sources"], ["ChEMBL", "PPB2", "SEA"])
+
+    def test_source_fetch_retries_before_marking_ok(self) -> None:
+        fake_compound = CompoundRecord(
+            compound="Chrysoeriol",
+            cas="491-71-4",
+            name="Chrysoeriol",
+            formula="C16H12O6",
+            canonical_smiles="COC1=CC(=CC(=C1O)O)C2=CC(=O)C3=C(O2)C=C(C=C3)O",
+            inchikey="AABBCCDDEEFFGG-UHFFFAOYSA-N",
+            identity_source="pubchem",
+            pubchem_cid="5280666",
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_root = Path(tmpdir)
+            with patch("miptd.pipeline.load_compound_record", return_value=fake_compound):
+                runner = PipelineRunner(
+                    cas="491-71-4",
+                    disease_keywords=["NAFLD", "liver"],
+                    output_root=output_root,
+                    project_root=REPO_ROOT,
+                    run_date="2026-03-22",
+                    dry_run=False,
+                )
+
+            output_file = runner.case_paths.a_dir / "sea_fetch" / "sea-results.xls"
+            attempts = {"count": 0}
+
+            def flaky_run(cmd: list[str]) -> None:
+                attempts["count"] += 1
+                if attempts["count"] < 3:
+                    raise RuntimeError(f"SEA transient error {attempts['count']}")
+                output_file.parent.mkdir(parents=True, exist_ok=True)
+                output_file.write_text("Target ID,Name\nABC_HUMAN,AKT1\n", encoding="utf-8")
+
+            runner._run = flaky_run  # type: ignore[method-assign]
+            with patch("miptd.pipeline.SOURCE_FETCH_RETRY_DELAYS_SECONDS", (0, 0)):
+                with patch("miptd.pipeline.time.sleep") as mock_sleep:
+                    runner._fetch_source_with_fallback(
+                        "SEA",
+                        output_file,
+                        ["python3", "fetch_sea_targets.py"],
+                        ["Target ID", "Name"],
+                    )
+
+            self.assertEqual(attempts["count"], 3)
+            self.assertTrue(output_file.exists())
+            source_status = json.loads(runner.status_path.read_text(encoding="utf-8"))["sources"]["SEA"]
+            self.assertEqual(source_status["status"], "ok")
+            self.assertFalse(source_status["used_placeholder"])
+            self.assertEqual(source_status["attempt_count"], 3)
+            self.assertEqual(len(source_status["attempt_errors"]), 2)
+            self.assertEqual(mock_sleep.call_count, 2)
+
+    def test_source_fetch_writes_placeholder_after_retry_exhaustion(self) -> None:
+        fake_compound = CompoundRecord(
+            compound="Chrysoeriol",
+            cas="491-71-4",
+            name="Chrysoeriol",
+            formula="C16H12O6",
+            canonical_smiles="COC1=CC(=CC(=C1O)O)C2=CC(=O)C3=C(O2)C=C(C=C3)O",
+            inchikey="AABBCCDDEEFFGG-UHFFFAOYSA-N",
+            identity_source="pubchem",
+            pubchem_cid="5280666",
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_root = Path(tmpdir)
+            with patch("miptd.pipeline.load_compound_record", return_value=fake_compound):
+                runner = PipelineRunner(
+                    cas="491-71-4",
+                    disease_keywords=["NAFLD", "liver"],
+                    output_root=output_root,
+                    project_root=REPO_ROOT,
+                    run_date="2026-03-22",
+                    dry_run=False,
+                )
+
+            output_file = runner.case_paths.a_dir / "ppb2_fetch" / "ppb2_targets.csv"
+            attempts = {"count": 0}
+
+            def failing_run(cmd: list[str]) -> None:
+                attempts["count"] += 1
+                raise RuntimeError(f"PPB2 transient error {attempts['count']}")
+
+            runner._run = failing_run  # type: ignore[method-assign]
+            with patch("miptd.pipeline.SOURCE_FETCH_RETRY_DELAYS_SECONDS", (0, 0)):
+                with patch("miptd.pipeline.time.sleep"):
+                    runner._fetch_source_with_fallback(
+                        "PPB2",
+                        output_file,
+                        ["python3", "fetch_ppb2_targets.py"],
+                        ["Symbol"],
+                    )
+
+            self.assertEqual(attempts["count"], 3)
+            self.assertEqual(output_file.read_text(encoding="utf-8"), "Symbol\n")
+            source_status = json.loads(runner.status_path.read_text(encoding="utf-8"))["sources"]["PPB2"]
+            self.assertEqual(source_status["status"], "failed")
+            self.assertTrue(source_status["used_placeholder"])
+            self.assertEqual(source_status["attempt_count"], 3)
+            self.assertEqual(len(source_status["attempt_errors"]), 3)
 
 
 if __name__ == "__main__":

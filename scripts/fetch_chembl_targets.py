@@ -28,6 +28,12 @@ def parse_args():
         description="Fetch human target evidence for a compound from ChEMBL."
     )
     parser.add_argument("--query", required=True, help="Compound name, InChIKey, or other ChEMBL search query.")
+    parser.add_argument(
+        "--fallback-query",
+        action="append",
+        default=[],
+        help="Additional ChEMBL search query to try if the primary query has no exact identifier match.",
+    )
     parser.add_argument("--match-inchikey", default=None, help="Exact standard InChIKey to prioritize.")
     parser.add_argument("--match-smiles", default=None, help="Canonical SMILES to prioritize.")
     parser.add_argument("--output-dir", required=True)
@@ -79,6 +85,37 @@ def choose_molecule(molecules, match_inchikey=None, match_smiles=None):
     if exact_identifier_requested:
         raise ValueError("No ChEMBL molecule matched the provided exact identifiers.")
     return molecules[0]
+
+
+def select_molecule_from_queries(
+    query,
+    fallback_queries=None,
+    match_inchikey=None,
+    match_smiles=None,
+    max_retries=4,
+    request_timeout=60.0,
+    search_func=search_molecules,
+):
+    queries = [query]
+    for fallback_query in fallback_queries or []:
+        if fallback_query and fallback_query not in queries:
+            queries.append(fallback_query)
+
+    searched_queries = []
+    last_error = None
+    for current_query in queries:
+        searched_queries.append(current_query)
+        log(f"[search] query={current_query}")
+        molecules = search_func(current_query, max_retries=max_retries, request_timeout=request_timeout)
+        log(f"[search] matched_molecules={len(molecules)}")
+        try:
+            return choose_molecule(molecules, match_inchikey=match_inchikey, match_smiles=match_smiles), searched_queries
+        except ValueError as exc:
+            last_error = exc
+            if not (match_inchikey or match_smiles):
+                raise
+            log(f"[search] no exact identifier match for query={current_query}: {exc}")
+    raise last_error or ValueError("No ChEMBL molecules matched the query.")
 
 
 def fetch_all_activities(molecule_chembl_id, sleep_seconds, max_retries, request_timeout):
@@ -134,10 +171,14 @@ def main():
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    log(f"[search] query={args.query}")
-    molecules = search_molecules(args.query, max_retries=args.max_retries, request_timeout=args.request_timeout)
-    log(f"[search] matched_molecules={len(molecules)}")
-    chosen = choose_molecule(molecules, match_inchikey=args.match_inchikey, match_smiles=args.match_smiles)
+    chosen, searched_queries = select_molecule_from_queries(
+        args.query,
+        fallback_queries=args.fallback_query,
+        match_inchikey=args.match_inchikey,
+        match_smiles=args.match_smiles,
+        max_retries=args.max_retries,
+        request_timeout=args.request_timeout,
+    )
     molecule_id = chosen["molecule_chembl_id"]
     log(f"[selected] molecule_chembl_id={molecule_id} pref_name={chosen.get('pref_name')}")
 
@@ -203,6 +244,7 @@ def main():
 
     summary = {
         "query": args.query,
+        "searched_queries": searched_queries,
         "molecule_chembl_id": molecule_id,
         "pref_name": chosen.get("pref_name"),
         "standard_inchi_key": (chosen.get("molecule_structures") or {}).get("standard_inchi_key"),

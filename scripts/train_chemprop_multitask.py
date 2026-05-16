@@ -13,6 +13,7 @@ from pathlib import Path
 DEFAULT_MPLCONFIGDIR = "tmp/mplconfig"
 DEFAULT_XDG_CACHE_HOME = "tmp/fontconfig"
 DEFAULT_METADATA_FILENAME = "run_metadata.json"
+DEFAULT_TRAINING_METRICS = ["rmse", "mae"]
 
 
 def parse_args():
@@ -42,7 +43,7 @@ def parse_args():
     parser.add_argument("--ffn-hidden-dim", type=int, default=300)
     parser.add_argument("--ffn-num-layers", type=int, default=2)
     parser.add_argument("--ensemble-size", type=int, default=1)
-    parser.add_argument("--metrics", nargs="*", default=["rmse", "mae", "r2"])
+    parser.add_argument("--metrics", nargs="*", default=DEFAULT_TRAINING_METRICS)
     parser.add_argument("--molecule-featurizers", nargs="*", default=None)
     return parser.parse_args()
 

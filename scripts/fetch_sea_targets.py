@@ -28,6 +28,7 @@ BROWSER_HEADERS = {
 
 SEA_SEARCH_URL = "https://sea.compbio.ucsf.edu/search"
 DEFAULT_FINGERPRINT_TYPE = "rdkit_ecfp"
+SEA_SUBMIT_RETRY_DELAYS_SECONDS = (5, 15, 30, 60)
 
 
 def parse_args():
@@ -59,11 +60,25 @@ def sea_safe_compound_id(compound_name: Optional[str]) -> str:
     return label.strip("_") or "compound_1"
 
 
+def request_with_retries(action, label: str):
+    max_attempts = len(SEA_SUBMIT_RETRY_DELAYS_SECONDS) + 1
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return action()
+        except Exception as exc:
+            if attempt == max_attempts:
+                raise
+            delay_seconds = SEA_SUBMIT_RETRY_DELAYS_SECONDS[attempt - 1]
+            log(f"[sea] {label} retry {attempt}/{max_attempts} after transient error: {exc}; sleep {delay_seconds}s")
+            time.sleep(delay_seconds)
+    raise RuntimeError(f"SEA {label} retry loop ended unexpectedly.")
+
+
 def submit_online(smiles: str, compound_name: Optional[str]) -> Tuple[requests.Session, str]:
     session = requests.Session()
     session.headers.update(BROWSER_HEADERS)
     log("[sea] open search page")
-    home = session.get(SEA_SEARCH_URL, timeout=120)
+    home = request_with_retries(lambda: session.get(SEA_SEARCH_URL, timeout=120), "open search page")
     home.raise_for_status()
     match = re.search(r'name="csrf_token" type="hidden" value="([^"]+)"', home.text)
     if not match:
@@ -77,16 +92,19 @@ def submit_online(smiles: str, compound_name: Optional[str]) -> Tuple[requests.S
         "query_custom_targets_paste": f"{smiles} {label}",
     }
     log("[sea] submit query")
-    result = session.post(
-        SEA_SEARCH_URL,
-        data=payload,
-        headers={
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Origin": "https://sea.compbio.ucsf.edu",
-            "Referer": SEA_SEARCH_URL,
-        },
-        allow_redirects=True,
-        timeout=300,
+    result = request_with_retries(
+        lambda: session.post(
+            SEA_SEARCH_URL,
+            data=payload,
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Origin": "https://sea.compbio.ucsf.edu",
+                "Referer": SEA_SEARCH_URL,
+            },
+            allow_redirects=True,
+            timeout=300,
+        ),
+        "submit query",
     )
     result.raise_for_status()
     return session, result.url
@@ -99,8 +117,13 @@ def wait_for_result_page(session: requests.Session, job_url: str, timeout_second
     while time.time() < deadline:
         poll_i += 1
         log(f"[sea] poll result page {poll_i}: {job_url}")
-        response = session.get(job_url, timeout=120)
-        response.raise_for_status()
+        try:
+            response = session.get(job_url, timeout=120)
+            response.raise_for_status()
+        except Exception as exc:
+            log(f"[sea] poll retry after transient error: {exc}")
+            time.sleep(poll_seconds)
+            continue
         html_text = response.text
         last_html = html_text
         if "In Progress" not in html_text and "pending" not in html_text.lower():

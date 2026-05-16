@@ -3,6 +3,7 @@
 import argparse
 import csv
 import html
+import http.client
 import json
 import re
 import time
@@ -64,7 +65,7 @@ def fetch_text(url, max_retries=5):
             req = urllib.request.Request(url, headers=BROWSER_HEADERS)
             with urllib.request.urlopen(req, timeout=180) as response:
                 return response.read().decode("utf-8", errors="replace")
-        except (HTTPError, URLError) as exc:
+        except (HTTPError, URLError, TimeoutError, http.client.RemoteDisconnected) as exc:
             last_error = exc
             log(f"[ppb2] retry {attempt + 1}/{max_retries} failed: {exc}")
             time.sleep(2.0 * (attempt + 1))
@@ -79,7 +80,7 @@ def fetch_json(url, max_retries=5):
             req = urllib.request.Request(url, headers=BROWSER_HEADERS)
             with urllib.request.urlopen(req, timeout=180) as response:
                 return json.load(response)
-        except (HTTPError, URLError) as exc:
+        except (HTTPError, URLError, TimeoutError, http.client.RemoteDisconnected) as exc:
             last_error = exc
             log(f"[ppb2] retry {attempt + 1}/{max_retries} failed: {exc}")
             time.sleep(2.0 * (attempt + 1))

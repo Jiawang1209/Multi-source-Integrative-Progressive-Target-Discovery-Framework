@@ -196,7 +196,14 @@ def fetch_activities_for_target(target_chembl_id, sleep_seconds, max_retries, re
             )
             url = f"https://www.ebi.ac.uk/chembl/api/data/activity.json?{query}"
             log(f"    [activity-page] target={target_chembl_id} type={standard_type} page={page_i} offset={offset}")
-            payload = fetch_json(url, max_retries=max_retries, request_timeout=request_timeout)
+            try:
+                payload = fetch_json(url, max_retries=max_retries, request_timeout=request_timeout)
+            except Exception as exc:
+                log(
+                    f"    [skip] target={target_chembl_id} type={standard_type} "
+                    f"page={page_i} offset={offset}: {exc}"
+                )
+                break
             batch = payload.get("activities", [])
             if not batch:
                 break

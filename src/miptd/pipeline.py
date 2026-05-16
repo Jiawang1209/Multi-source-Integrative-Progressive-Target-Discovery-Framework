@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import json
 import subprocess
+import time
 from dataclasses import asdict
 from pathlib import Path
 
@@ -27,6 +28,9 @@ from .discovery import (
 )
 from .models import CasePaths
 from .utils import copy_file, ensure_dir, join_keywords_regex, print_stage, python_script_cmd, read_csv_rows, r_script_cmd, run_command, write_text
+
+
+SOURCE_FETCH_RETRY_DELAYS_SECONDS = (20, 60)
 
 
 class PipelineRunner:
@@ -190,6 +194,8 @@ class PipelineRunner:
                 self.scripts_dir / "fetch_chembl_targets.py",
                 "--query",
                 self.compound.name,
+                "--fallback-query",
+                self.compound.cas,
                 "--match-inchikey",
                 self.compound.inchikey,
                 "--match-smiles",
@@ -490,6 +496,8 @@ class PipelineRunner:
         output_file: Path,
         message: str | None = None,
         used_placeholder: bool = False,
+        attempt_count: int | None = None,
+        attempt_errors: list[dict[str, str | int]] | None = None,
     ) -> None:
         payload = {
             "status": status,
@@ -498,6 +506,10 @@ class PipelineRunner:
         }
         if message:
             payload["message"] = message
+        if attempt_count is not None:
+            payload["attempt_count"] = attempt_count
+        if attempt_errors is not None:
+            payload["attempt_errors"] = attempt_errors
         self.status["sources"][source_name] = payload
         self._write_status()
 
@@ -515,20 +527,58 @@ class PipelineRunner:
             self._update_source_status(source_name, "dry_run", output_file)
             self._run(cmd)
             return
-        try:
-            self._run(cmd)
-            if not output_file.exists():
-                raise FileNotFoundError(f"{source_name} did not produce the expected output file: {output_file}")
-            self._update_source_status(source_name, "ok", output_file)
-        except (subprocess.CalledProcessError, FileNotFoundError, RuntimeError) as exc:
-            self._write_placeholder_source_file(output_file, placeholder_columns)
-            self._update_source_status(
-                source_name,
-                "failed",
-                output_file,
-                message=str(exc),
-                used_placeholder=True,
-            )
+        attempt_errors: list[dict[str, str | int]] = []
+        max_attempts = len(SOURCE_FETCH_RETRY_DELAYS_SECONDS) + 1
+        for attempt_number in range(1, max_attempts + 1):
+            try:
+                if attempt_number > 1:
+                    print_stage(
+                        "Source retry",
+                        f"{source_name}: retry attempt {attempt_number}/{max_attempts}",
+                        log_path=self.run_log_path,
+                    )
+                self._run(cmd)
+                if not output_file.exists():
+                    raise FileNotFoundError(f"{source_name} did not produce the expected output file: {output_file}")
+                self._update_source_status(
+                    source_name,
+                    "ok",
+                    output_file,
+                    attempt_count=attempt_number,
+                    attempt_errors=attempt_errors,
+                )
+                return
+            except (subprocess.CalledProcessError, FileNotFoundError, RuntimeError) as exc:
+                message = str(exc)
+                attempt_errors.append({"attempt": attempt_number, "error": message})
+                if attempt_number == max_attempts:
+                    self._write_placeholder_source_file(output_file, placeholder_columns)
+                    self._update_source_status(
+                        source_name,
+                        "failed",
+                        output_file,
+                        message=message,
+                        used_placeholder=True,
+                        attempt_count=attempt_number,
+                        attempt_errors=attempt_errors,
+                    )
+                    return
+
+                delay_seconds = SOURCE_FETCH_RETRY_DELAYS_SECONDS[attempt_number - 1]
+                print_stage(
+                    "Source retry",
+                    f"{source_name}: attempt {attempt_number}/{max_attempts} failed ({message}); retry in {delay_seconds}s",
+                    log_path=self.run_log_path,
+                )
+                self._update_source_status(
+                    source_name,
+                    "retrying",
+                    output_file,
+                    message=message,
+                    attempt_count=attempt_number,
+                    attempt_errors=attempt_errors,
+                )
+                time.sleep(delay_seconds)
 
     def _write_placeholder_source_file(self, output_file: Path, columns: list[str]) -> None:
         ensure_dir(output_file.parent)
